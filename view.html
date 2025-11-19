@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overlay TikFinity - Visualização</title>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Widget Box - apenas visualização */
+  .widgetBox {
+    position: absolute;
+    overflow: hidden;
+  }
+
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    pointer-events: auto;
+  }
+
+  /* Mensagem de erro/carregamento */
+  #message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    text-align: center;
+    z-index: 999999;
+    max-width: 80%;
+  }
+
+  #message.hidden {
+    display: none;
+  }
+
+  #message h2 {
+    margin-top: 0;
+    font-size: 20px;
+  }
+
+  #message p {
+    font-size: 14px;
+    color: #aaa;
+    line-height: 1.6;
+  }
+
+  #message code {
+    background: rgba(255,255,255,0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+</style>
+</head>
+
+<body>
+
+<!-- Mensagem de status -->
+<div id="message">
+  <h2>🎯 Carregando Overlay...</h2>
+  <p>Aguarde enquanto os widgets são carregados.</p>
+</div>
+
+<script>
+let widgets = {};
+
+/* ==========================================
+   CARREGAR CONFIGURAÇÃO
+========================================== */
+function carregarConfiguracao() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // Opção 1: Carregar via parâmetro preset
+  const presetNome = urlParams.get('preset');
+  if (presetNome) {
+    const presets = JSON.parse(localStorage.getItem('tikfinityPresets') || '{}');
+    if (presets[presetNome]) {
+      widgets = presets[presetNome];
+      renderizarWidgets();
+      return;
+    } else {
+      mostrarErro(`Preset "${presetNome}" não encontrado.`, 
+        `Certifique-se de que o preset existe no editor principal.`);
+      return;
+    }
+  }
+  
+  // Opção 2: Carregar via parâmetro config (base64)
+  const configBase64 = urlParams.get('config');
+  if (configBase64) {
+    try {
+      const json = atob(configBase64);
+      const data = JSON.parse(json);
+      widgets = data.widgets || data;
+      renderizarWidgets();
+      return;
+    } catch (error) {
+      mostrarErro('Erro ao decodificar configuração', error.message);
+      return;
+    }
+  }
+  
+  // Opção 3: Carregar auto-save do localStorage
+  const autoSave = localStorage.getItem('tikfinityAutoSave');
+  if (autoSave) {
+    try {
+      const data = JSON.parse(autoSave);
+      widgets = data.widgets || {};
+      if (Object.keys(widgets).length > 0) {
+        renderizarWidgets();
+        return;
+      }
+    } catch (error) {
+      console.error('Erro ao carregar auto-save:', error);
+    }
+  }
+  
+  // Nenhuma configuração encontrada
+  mostrarErro(
+    'Nenhuma configuração encontrada',
+    `Use um dos seguintes métodos para carregar widgets:<br><br>
+    <strong>1. Via Preset:</strong><br>
+    <code>view.html?preset=NomeDoPreset</code><br><br>
+    <strong>2. Via Configuração Codificada:</strong><br>
+    <code>view.html?config=...</code><br><br>
+    <strong>3. Auto-save:</strong><br>
+    Configure widgets no editor principal e eles serão carregados automaticamente.`
+  );
+}
+
+/* ==========================================
+   RENDERIZAR WIDGETS
+========================================== */
+function renderizarWidgets() {
+  // Esconder mensagem
+  document.getElementById('message').classList.add('hidden');
+  
+  // Criar cada widget
+  Object.entries(widgets).forEach(([id, config]) => {
+    criarWidget(id, config);
+  });
+}
+
+/* ==========================================
+   CRIAR WIDGET NA TELA
+========================================== */
+function criarWidget(id, config) {
+  const box = document.createElement("div");
+  box.className = "widgetBox";
+  box.id = `box${id}`;
+  
+  // Aplicar estilos
+  box.style.left = config.x + 'px';
+  box.style.top = config.y + 'px';
+  box.style.width = config.width + 'px';
+  box.style.height = config.height + 'px';
+  box.style.opacity = config.opacity || 1;
+  box.style.transform = `scale(${config.zoom || 1}) rotate(${config.rotation || 0}deg)`;
+  box.style.zIndex = config.zIndex || 1000;
+  box.style.border = `${config.borderWidth || 0}px ${config.borderStyle || 'solid'} ${config.borderColor || '#ffffff'}`;
+  box.style.borderRadius = (config.borderRadius || 0) + 'px';
+
+  // Criar iframe
+  const frame = document.createElement("iframe");
+  frame.id = `frame${id}`;
+  frame.src = config.url;
+  frame.allow = "autoplay; fullscreen";
+
+  box.appendChild(frame);
+  document.body.appendChild(box);
+}
+
+/* ==========================================
+   MOSTRAR ERRO
+========================================== */
+function mostrarErro(titulo, mensagem) {
+  const msg = document.getElementById('message');
+  msg.innerHTML = `
+    <h2>⚠️ ${titulo}</h2>
+    <p>${mensagem}</p>
+  `;
+  msg.classList.remove('hidden');
+}
+
+/* ==========================================
+   GERAR LINK COMPARTILHÁVEL
+   (Função helper para usar no console)
+========================================== */
+function gerarLinkCompartilhavel() {
+  const data = JSON.stringify({ widgets: widgets });
+  const base64 = btoa(data);
+  const url = `${window.location.origin}${window.location.pathname}?config=${base64}`;
+  console.log('Link compartilhável gerado:');
+  console.log(url);
+  return url;
+}
+
+/* ==========================================
+   INICIALIZAR
+========================================== */
+window.addEventListener('load', () => {
+  carregarConfiguracao();
+});
+
+</script>
+
+</body>
+</html>

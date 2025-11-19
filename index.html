@@ -1,0 +1,1883 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overlay TikFinity - Editor Avançado</title>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #2a2a2a;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Áreas de referência de resolução */
+  .resolution-guide {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 1;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+  }
+
+  #guide-720p {
+    width: 1280px;
+    height: 720px;
+    background: rgba(102, 126, 234, 0.1);
+    border-color: rgba(102, 126, 234, 0.5);
+  }
+
+  #guide-1080p {
+    width: 1920px;
+    height: 1080px;
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.5);
+  }
+
+  #guide-4k {
+    width: 3840px;
+    height: 2160px;
+    background: rgba(236, 72, 153, 0.05);
+    border-color: rgba(236, 72, 153, 0.3);
+  }
+
+  .resolution-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    backdrop-filter: blur(5px);
+  }
+
+  #guide-720p .resolution-label {
+    color: #667eea;
+  }
+
+  #guide-1080p .resolution-label {
+    color: #22c55e;
+  }
+
+  #guide-4k .resolution-label {
+    color: #ec4899;
+  }
+
+  /* ===== PAINEL PRINCIPAL ===== */
+  #mainControls {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: linear-gradient(135deg, rgba(20,20,20,0.95), rgba(40,40,40,0.95));
+    border-radius: 12px;
+    z-index: 99999;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    max-width: 350px;
+    transition: all 0.3s ease;
+  }
+
+  #mainControls.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-20px);
+  }
+
+  .main-header {
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px 12px 0 0;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .main-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .main-body {
+    padding: 15px;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+  }
+
+  .btn-warning {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+  }
+
+  .btn-info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    color: white;
+  }
+
+  .btn-small {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  /* ===== WIDGET BOX ===== */
+  .widgetBox {
+    position: absolute;
+    overflow: visible;
+    transition: border 0.2s ease;
+  }
+
+  .widgetBox.selected {
+    border: 2px solid #667eea !important;
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+  }
+
+  .widgetBox.locked {
+    cursor: default !important;
+  }
+
+  .widget-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    border-radius: inherit;
+    cursor: move;
+  }
+
+  .widgetBox.locked .widget-inner {
+    cursor: default;
+  }
+
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .widgetBox.interactive iframe {
+    pointer-events: auto;
+  }
+
+  /* Overlay para permitir drag mesmo com iframe */
+  .drag-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    cursor: move;
+  }
+
+  .widgetBox.locked .drag-overlay {
+    cursor: default;
+  }
+
+  .widgetBox.interactive .drag-overlay {
+    display: none;
+  }
+
+  /* ===== RESIZE HANDLES (Estilo Photoshop) ===== */
+  .resize-handle {
+    position: absolute;
+    background: #667eea;
+    border: 2px solid white;
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .widgetBox.selected .resize-handle {
+    opacity: 1;
+  }
+
+  .widgetBox.locked .resize-handle {
+    display: none;
+  }
+
+  /* Cantos */
+  .resize-handle.nw, .resize-handle.ne, .resize-handle.sw, .resize-handle.se {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  /* Laterais */
+  .resize-handle.n, .resize-handle.s {
+    width: 40px;
+    height: 6px;
+    border-radius: 3px;
+  }
+
+  .resize-handle.e, .resize-handle.w {
+    width: 6px;
+    height: 40px;
+    border-radius: 3px;
+  }
+
+  /* Posições */
+  .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
+  .resize-handle.n { top: -3px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+  .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+  .resize-handle.e { top: 50%; right: -3px; transform: translateY(-50%); cursor: e-resize; }
+  .resize-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+  .resize-handle.s { bottom: -3px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+  .resize-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+  .resize-handle.w { top: 50%; left: -3px; transform: translateY(-50%); cursor: w-resize; }
+
+  /* ===== PAINEL DE CONTROLE INDIVIDUAL ===== */
+  .widget-controls {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translate(-50%, -100%);
+    background: linear-gradient(135deg, rgba(20,20,20,0.98), rgba(40,40,40,0.98));
+    padding: 15px;
+    border-radius: 12px;
+    z-index: 9998;
+    min-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .widget-controls.hidden {
+    display: none;
+  }
+
+  .control-group {
+    margin-bottom: 12px;
+  }
+
+  .control-group label {
+    display: block;
+    color: #aaa;
+    font-size: 11px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .control-group input[type="text"],
+  .control-group input[type="url"],
+  .control-group input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(0,0,0,0.3);
+    color: white;
+    font-size: 13px;
+  }
+
+  .control-group input[type="range"] {
+    width: 100%;
+  }
+
+  .control-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .control-row .control-group {
+    flex: 1;
+  }
+
+  .value-display {
+    display: inline-block;
+    color: #667eea;
+    font-weight: bold;
+    margin-left: 8px;
+  }
+
+  .preset-list {
+    max-height: 150px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    padding: 8px;
+  }
+
+  .preset-item {
+    padding: 8px;
+    margin-bottom: 4px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    font-size: 12px;
+  }
+
+  .preset-item:hover {
+    background: rgba(102, 126, 234, 0.3);
+  }
+
+  .widget-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 12px;
+  }
+
+  .widget-item {
+    padding: 10px;
+    margin-bottom: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    font-size: 12px;
+    transition: all 0.2s ease;
+  }
+
+  .widget-item:hover {
+    background: rgba(102, 126, 234, 0.3);
+    transform: translateX(4px);
+  }
+
+  .widget-item.active {
+    background: rgba(102, 126, 234, 0.5);
+    border-left: 3px solid #667eea;
+  }
+
+  .help-text {
+    color: #888;
+    font-size: 11px;
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  .section-title {
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* Scrollbar customizada */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.5);
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.8);
+  }
+
+  /* Indicador de atalhos */
+  #shortcutIndicator {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 99998;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  #shortcutIndicator.show {
+    opacity: 1;
+  }
+
+  /* Templates TikFinity */
+  .template-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .template-card {
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    color: white;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .template-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  .template-icon {
+    font-size: 24px;
+    margin-bottom: 6px;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- GUIAS DE RESOLUÇÃO -->
+<div id="guide-4k" class="resolution-guide">
+  <div class="resolution-label">4K (3840x2160)</div>
+</div>
+<div id="guide-1080p" class="resolution-guide">
+  <div class="resolution-label">1080p (1920x1080)</div>
+</div>
+<div id="guide-720p" class="resolution-guide">
+  <div class="resolution-label">720p (1280x720)</div>
+</div>
+
+<!-- INDICADOR DE ATALHOS -->
+<div id="shortcutIndicator"></div>
+
+<!-- PAINEL PRINCIPAL -->
+<div id="mainControls">
+  <div class="main-header">
+    <h2>🎯 Overlay TikFinity</h2>
+    <button class="btn-small btn-warning" onclick="toggleControls()" title="Ocultar/Mostrar (Ctrl+H)">👁️</button>
+  </div>
+  
+  <div class="main-body">
+    <!-- Lista de Widgets -->
+    <div class="section-title">📦 Widgets Ativos</div>
+    <div id="widgetList" class="widget-list">
+      <div style="color: #888; text-align: center; padding: 20px; font-size: 12px;">
+        Nenhum widget adicionado
+      </div>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div class="btn-group">
+      <button class="btn-primary" onclick="novoWidget()">➕ Adicionar Widget</button>
+      <button class="btn-success" onclick="adicionarTemplate()">🎨 Templates</button>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn-info" onclick="salvarPreset()">💾 Salvar Preset</button>
+      <button class="btn-info" onclick="carregarPreset()">📂 Carregar Preset</button>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn-warning" onclick="exportarJSON()">📤 Exportar</button>
+      <button class="btn-warning" onclick="importarJSON()">📥 Importar</button>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn-success" onclick="gerarLinkExterno()">🔗 Link Externo</button>
+      <button class="btn-danger" onclick="limparTudo()">🗑️ Limpar Tudo</button>
+    </div>
+
+    <!-- Guias de Resolução -->
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+      <div class="section-title">📐 Guias de Resolução</div>
+      <div class="btn-group">
+        <button class="btn-primary btn-small" id="toggle720p" onclick="toggleGuia('720p')">📺 720p</button>
+        <button class="btn-success btn-small" id="toggle1080p" onclick="toggleGuia('1080p')">📺 1080p</button>
+        <button class="btn-warning btn-small" id="toggle4k" onclick="toggleGuia('4k')">📺 4K</button>
+      </div>
+      <p class="help-text">📐 Ative/desative as guias visuais de resolução no canvas</p>
+    </div>
+
+    <!-- Resolução da Área de Edição -->
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+      <div class="section-title">📺 Resolução da Área de Edição</div>
+      <div class="btn-group">
+        <button class="btn-info btn-small" onclick="definirResolucaoCanvas(1280, 720)">720p</button>
+        <button class="btn-info btn-small" onclick="definirResolucaoCanvas(1920, 1080)">1080p</button>
+        <button class="btn-info btn-small" onclick="definirResolucaoCanvas(2560, 1440)">1440p</button>
+        <button class="btn-primary btn-small" onclick="definirResolucaoCanvas(3840, 2160)">4K</button>
+      </div>
+      <div class="control-row" style="margin-top: 10px;">
+        <div class="control-group">
+          <label>Largura (px)</label>
+          <input type="number" id="canvasWidth" value="1920" onchange="definirResolucaoCanvasCustom()">
+        </div>
+        <div class="control-group">
+          <label>Altura (px)</label>
+          <input type="number" id="canvasHeight" value="1080" onchange="definirResolucaoCanvasCustom()">
+        </div>
+      </div>
+      <p class="help-text">📺 Ajuste o tamanho da área de edição para usar no TikTok Studio</p>
+    </div>
+
+    <!-- Zoom de Canvas -->
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+      <div class="section-title">🔍 Zoom de Canvas</div>
+      <div class="control-group">
+        <label>Zoom da Visualização <span class="value-display" id="canvasZoomVal">100%</span></label>
+        <input type="range" id="canvasZoom" min="0.25" max="2" step="0.05" value="1" 
+          oninput="document.getElementById('canvasZoomVal').textContent = Math.round(this.value * 100) + '%'; aplicarZoomCanvas(this.value)">
+        <p class="help-text">🔍 Ajuste o zoom da área de trabalho para posicionar widgets com precisão</p>
+      </div>
+      <div class="btn-group">
+        <button class="btn-small btn-info" onclick="resetarZoomCanvas()">↺ Resetar 100%</button>
+      </div>
+    </div>
+
+    <!-- Atalhos -->
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+      <div class="section-title">⌨️ Atalhos</div>
+      <div style="color: #aaa; font-size: 11px; line-height: 1.6;">
+        <strong>Ctrl + H</strong> - Ocultar/Mostrar Controles<br>
+        <strong>Ctrl + S</strong> - Salvar Preset<br>
+        <strong>Ctrl + L</strong> - Travar/Destravar Widgets<br>
+        <strong>Delete</strong> - Deletar Widget Selecionado
+      </div>
+    </div>
+
+    <!-- Copyright -->
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;">
+      <div style="color: #667eea; font-size: 11px; font-weight: 600;">
+        © 2025 Felipe Fernandes de Araujo<br>
+        <a href="https://www.tiktok.com/@badwise" target="_blank" style="color: #888; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#667eea'" onmouseout="this.style.color='#888'">
+          aka @badwise
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let widgetID = 0;
+let widgets = {};
+let selectedWidget = null;
+let controlsVisible = true;
+let allLocked = false;
+
+// Templates TikFinity predefinidos
+const tikfinityTemplates = {
+  'Like Counter': 'https://tikfinity.zerody.one/overlay/like-counter',
+  'Follow Alert': 'https://tikfinity.zerody.one/overlay/follow-alert',
+  'Gift Counter': 'https://tikfinity.zerody.one/overlay/gift-counter',
+  'Chat Overlay': 'https://tikfinity.zerody.one/overlay/chat',
+  'Top Gifters': 'https://tikfinity.zerody.one/overlay/top-gifters',
+  'Goal Bar': 'https://tikfinity.zerody.one/overlay/goal'
+};
+
+/* ==========================================
+   AUTO-SAVE DEBOUNCED
+========================================== */
+let autoSaveTimeout = null;
+
+function autoSave() {
+  clearTimeout(autoSaveTimeout);
+  autoSaveTimeout = setTimeout(() => {
+    const state = {
+      widgetID: widgetID,
+      widgets: widgets,
+      timestamp: new Date().toISOString()
+    };
+    localStorage.setItem('tikfinityAutoSave', JSON.stringify(state));
+  }, 500);
+}
+
+function restaurarAutoSave() {
+  const saved = localStorage.getItem('tikfinityAutoSave');
+  if (!saved) return false;
+  
+  try {
+    const state = JSON.parse(saved);
+    
+    if (state.widgets && Object.keys(state.widgets).length > 0) {
+      let maxID = 0;
+      
+      Object.entries(state.widgets).forEach(([savedId, config]) => {
+        const id = parseInt(savedId);
+        maxID = Math.max(maxID, id);
+        criarWidgetComIDFixo(id, config);
+      });
+      
+      widgetID = maxID;
+      return true;
+    }
+  } catch (error) {
+    console.error('Erro ao restaurar auto-save:', error);
+  }
+  return false;
+}
+
+function criarWidgetComIDFixo(id, config) {
+  widgets[id] = {
+    interactive: false,
+    ...config,
+    id: id
+  };
+
+  const box = document.createElement("div");
+  box.className = "widgetBox";
+  box.id = `box${id}`;
+  
+  // Aplicar classe interactive se necessário
+  if (widgets[id].interactive) {
+    box.classList.add('interactive');
+  }
+  
+  aplicarEstilos(box, widgets[id]);
+
+  const inner = document.createElement("div");
+  inner.className = "widget-inner";
+
+  const controls = document.createElement("div");
+  controls.className = "widget-controls hidden";
+  controls.id = `controls${id}`;
+  controls.innerHTML = gerarControlesHTML(id);
+
+  const frame = document.createElement("iframe");
+  frame.id = `frame${id}`;
+  frame.src = config.url;
+  frame.allow = "autoplay; fullscreen";
+
+  // Overlay para permitir drag
+  const dragOverlay = document.createElement("div");
+  dragOverlay.className = "drag-overlay";
+  dragOverlay.id = `dragOverlay${id}`;
+
+  // Criar handles de resize (8 direções)
+  const handles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+  handles.forEach(direction => {
+    const handle = document.createElement('div');
+    handle.className = `resize-handle ${direction}`;
+    handle.dataset.direction = direction;
+    box.appendChild(handle);
+  });
+
+  inner.appendChild(frame);
+  inner.appendChild(dragOverlay);
+  box.appendChild(controls);
+  box.appendChild(inner);
+  document.body.appendChild(box);
+
+  box.addEventListener('click', (e) => {
+    if (!widgets[id].locked) {
+      selecionarWidget(id);
+    }
+  });
+
+  adicionarArraste(box, id);
+  adicionarResize(box, id);
+  atualizarListaWidgets();
+}
+
+/* ==========================================
+   CRIAR NOVO WIDGET
+========================================== */
+function novoWidget() {
+  const link = prompt("📌 Informe a URL do widget TikFinity:", "https://tikfinity.zerody.one/");
+  if (!link) return;
+
+  criarWidget({
+    url: link,
+    width: 400,
+    height: 250,
+    x: 100 + (widgetID * 20),
+    y: 100 + (widgetID * 20),
+    opacity: 1,
+    zoom: 1,
+    rotation: 0,
+    zIndex: 1000,
+    borderWidth: 0,
+    borderColor: '#ffffff',
+    borderStyle: 'solid',
+    borderRadius: 0,
+    locked: false,
+    interactive: false
+  });
+}
+
+/* ==========================================
+   CRIAR WIDGET NA TELA
+========================================== */
+function criarWidget(config) {
+  widgetID++;
+  const id = widgetID;
+  criarWidgetComIDFixo(id, config);
+  selecionarWidget(id);
+  autoSave();
+}
+
+/* ==========================================
+   GERAR HTML DOS CONTROLES
+========================================== */
+function gerarControlesHTML(id) {
+  const resolutionPresets = {
+    '720p': { width: 1280, height: 720 },
+    '1080p': { width: 1920, height: 1080 },
+    '1440p': { width: 2560, height: 1440 },
+    '4K': { width: 3840, height: 2160 }
+  };
+  
+  return `
+    <div class="section-title">⚙️ Configurações do Widget #${id}</div>
+    
+    <div class="control-group">
+      <label>🔗 URL do Widget</label>
+      <input type="url" id="url${id}" value="${widgets[id].url}" onchange="atualizarWidget(${id})">
+    </div>
+
+    <div class="control-group">
+      <label>📺 Resolução Predefinida</label>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+        <button class="btn-info btn-small" onclick="aplicarResolucao(${id}, 1280, 720)" title="1280x720">720p</button>
+        <button class="btn-info btn-small" onclick="aplicarResolucao(${id}, 1920, 1080)" title="1920x1080">1080p</button>
+        <button class="btn-info btn-small" onclick="aplicarResolucao(${id}, 2560, 1440)" title="2560x1440">1440p</button>
+        <button class="btn-primary btn-small" onclick="aplicarResolucao(${id}, 3840, 2160)" title="3840x2160">4K</button>
+      </div>
+      <p class="help-text">👆 Clique para aplicar resolução padrão ao widget</p>
+    </div>
+
+    <div class="control-row">
+      <div class="control-group">
+        <label>📐 Largura (px)</label>
+        <input type="number" id="width${id}" value="${widgets[id].width}" onchange="atualizarWidget(${id})">
+      </div>
+      <div class="control-group">
+        <label>📏 Altura (px)</label>
+        <input type="number" id="height${id}" value="${widgets[id].height}" onchange="atualizarWidget(${id})">
+      </div>
+    </div>
+
+    <div class="control-row">
+      <div class="control-group">
+        <label>↔️ Posição X (px)</label>
+        <input type="number" id="x${id}" value="${widgets[id].x}" onchange="atualizarWidget(${id})">
+      </div>
+      <div class="control-group">
+        <label>↕️ Posição Y (px)</label>
+        <input type="number" id="y${id}" value="${widgets[id].y}" onchange="atualizarWidget(${id})">
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>👻 Opacidade <span class="value-display" id="opacityVal${id}">${Math.round(widgets[id].opacity * 100)}%</span></label>
+      <input type="range" id="opacity${id}" min="0" max="1" step="0.01" value="${widgets[id].opacity}" 
+        oninput="document.getElementById('opacityVal${id}').textContent = Math.round(this.value * 100) + '%'" 
+        onchange="atualizarWidget(${id})">
+    </div>
+
+    <div class="control-group">
+      <label>🔍 Zoom <span class="value-display" id="zoomVal${id}">${Math.round(widgets[id].zoom * 100)}%</span></label>
+      <input type="range" id="zoom${id}" min="0.1" max="3" step="0.1" value="${widgets[id].zoom}" 
+        oninput="document.getElementById('zoomVal${id}').textContent = Math.round(this.value * 100) + '%'" 
+        onchange="atualizarWidget(${id})">
+    </div>
+
+    <div class="control-group">
+      <label>🔄 Rotação <span class="value-display" id="rotationVal${id}">${widgets[id].rotation}°</span></label>
+      <input type="range" id="rotation${id}" min="0" max="360" step="1" value="${widgets[id].rotation}" 
+        oninput="document.getElementById('rotationVal${id}').textContent = this.value + '°'" 
+        onchange="atualizarWidget(${id})">
+    </div>
+
+    <div class="control-group">
+      <label>📊 Camada (Z-Index) <span class="value-display" id="zIndexVal${id}">${widgets[id].zIndex}</span></label>
+      <input type="range" id="zIndex${id}" min="1" max="9999" step="1" value="${widgets[id].zIndex}" 
+        oninput="document.getElementById('zIndexVal${id}').textContent = this.value" 
+        onchange="atualizarWidget(${id})">
+    </div>
+
+    <div class="section-title">🎨 Estilo da Borda</div>
+
+    <div class="control-row">
+      <div class="control-group">
+        <label>📏 Espessura (px)</label>
+        <input type="number" id="borderWidth${id}" min="0" max="20" value="${widgets[id].borderWidth}" onchange="atualizarWidget(${id})">
+      </div>
+      <div class="control-group">
+        <label>🎨 Cor</label>
+        <input type="color" id="borderColor${id}" value="${widgets[id].borderColor}" onchange="atualizarWidget(${id})" style="height: 35px;">
+      </div>
+    </div>
+
+    <div class="control-row">
+      <div class="control-group">
+        <label>🖌️ Estilo</label>
+        <select id="borderStyle${id}" onchange="atualizarWidget(${id})" style="width: 100%; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2);">
+          <option value="solid" ${widgets[id].borderStyle === 'solid' ? 'selected' : ''}>Sólida</option>
+          <option value="dashed" ${widgets[id].borderStyle === 'dashed' ? 'selected' : ''}>Tracejada</option>
+          <option value="dotted" ${widgets[id].borderStyle === 'dotted' ? 'selected' : ''}>Pontilhada</option>
+          <option value="double" ${widgets[id].borderStyle === 'double' ? 'selected' : ''}>Dupla</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>🔲 Arredondamento (px)</label>
+        <input type="number" id="borderRadius${id}" min="0" max="100" value="${widgets[id].borderRadius}" onchange="atualizarWidget(${id})">
+      </div>
+    </div>
+
+    <div class="btn-group" style="margin-top: 15px;">
+      <button class="btn-warning btn-small" onclick="toggleLock(${id})">${widgets[id].locked ? '🔓' : '🔒'} ${widgets[id].locked ? 'Destravar' : 'Travar'}</button>
+      <button class="${widgets[id].interactive ? 'btn-warning' : 'btn-success'} btn-small" onclick="toggleInteractive(${id})" id="interactiveBtn${id}">${widgets[id].interactive ? '✋ Editar' : '🖱️ Interagir'}</button>
+      <button class="btn-info btn-small" onclick="duplicarWidget(${id})">📋 Duplicar</button>
+      <button class="btn-danger btn-small" onclick="deletarWidget(${id})">🗑️ Deletar</button>
+    </div>
+    <p class="help-text">💡 Use "Interagir" para clicar dentro do iframe. Desative para mover/redimensionar.</p>
+  `;
+}
+
+/* ==========================================
+   APLICAR ESTILOS AO WIDGET
+========================================== */
+function aplicarEstilos(box, config) {
+  box.style.left = config.x + 'px';
+  box.style.top = config.y + 'px';
+  box.style.width = config.width + 'px';
+  box.style.height = config.height + 'px';
+  box.style.opacity = config.opacity;
+  box.style.transform = `scale(${config.zoom}) rotate(${config.rotation}deg)`;
+  box.style.zIndex = config.zIndex;
+  box.style.border = `${config.borderWidth}px ${config.borderStyle} ${config.borderColor}`;
+  box.style.borderRadius = config.borderRadius + 'px';
+  
+  if (config.locked) {
+    box.classList.add('locked');
+  } else {
+    box.classList.remove('locked');
+  }
+}
+
+/* ==========================================
+   ATUALIZAR WIDGET
+========================================== */
+function atualizarWidget(id) {
+  const box = document.getElementById(`box${id}`);
+  const frame = document.getElementById(`frame${id}`);
+  
+  widgets[id].url = document.getElementById(`url${id}`).value;
+  widgets[id].width = parseInt(document.getElementById(`width${id}`).value);
+  widgets[id].height = parseInt(document.getElementById(`height${id}`).value);
+  widgets[id].x = parseInt(document.getElementById(`x${id}`).value);
+  widgets[id].y = parseInt(document.getElementById(`y${id}`).value);
+  widgets[id].opacity = parseFloat(document.getElementById(`opacity${id}`).value);
+  widgets[id].zoom = parseFloat(document.getElementById(`zoom${id}`).value);
+  widgets[id].rotation = parseInt(document.getElementById(`rotation${id}`).value);
+  widgets[id].zIndex = parseInt(document.getElementById(`zIndex${id}`).value);
+  widgets[id].borderWidth = parseInt(document.getElementById(`borderWidth${id}`).value);
+  widgets[id].borderColor = document.getElementById(`borderColor${id}`).value;
+  widgets[id].borderStyle = document.getElementById(`borderStyle${id}`).value;
+  widgets[id].borderRadius = parseInt(document.getElementById(`borderRadius${id}`).value);
+
+  frame.src = widgets[id].url;
+  aplicarEstilos(box, widgets[id]);
+  atualizarListaWidgets();
+  autoSave();
+}
+
+/* ==========================================
+   APLICAR RESOLUÇÃO PREDEFINIDA
+========================================== */
+function aplicarResolucao(id, largura, altura) {
+  widgets[id].width = largura;
+  widgets[id].height = altura;
+  
+  const box = document.getElementById(`box${id}`);
+  box.style.width = largura + 'px';
+  box.style.height = altura + 'px';
+  
+  document.getElementById(`width${id}`).value = largura;
+  document.getElementById(`height${id}`).value = altura;
+  
+  atualizarListaWidgets();
+  autoSave();
+  mostrarIndicador(`📺 Resolução ${largura}x${altura} aplicada ao Widget #${id}`);
+}
+
+/* ==========================================
+   SELECIONAR WIDGET
+========================================== */
+function selecionarWidget(id) {
+  // Remover seleção anterior
+  if (selectedWidget) {
+    const prevBox = document.getElementById(`box${selectedWidget}`);
+    const prevControls = document.getElementById(`controls${selectedWidget}`);
+    if (prevBox) prevBox.classList.remove('selected');
+    if (prevControls) prevControls.classList.add('hidden');
+  }
+
+  // Adicionar nova seleção
+  selectedWidget = id;
+  const box = document.getElementById(`box${id}`);
+  const controls = document.getElementById(`controls${id}`);
+  
+  if (box) box.classList.add('selected');
+  if (controls && controlsVisible) controls.classList.remove('hidden');
+  
+  atualizarListaWidgets();
+}
+
+/* ==========================================
+   TRAVAR/DESTRAVAR WIDGET
+========================================== */
+function toggleLock(id) {
+  widgets[id].locked = !widgets[id].locked;
+  const box = document.getElementById(`box${id}`);
+  
+  // Se travar, desabilitar modo interativo
+  if (widgets[id].locked && widgets[id].interactive) {
+    widgets[id].interactive = false;
+    box.classList.remove('interactive');
+  }
+  
+  aplicarEstilos(box, widgets[id]);
+  
+  // Atualizar controles
+  const controls = document.getElementById(`controls${id}`);
+  controls.innerHTML = gerarControlesHTML(id);
+  
+  mostrarIndicador(widgets[id].locked ? '🔒 Widget Travado' : '🔓 Widget Destravado');
+  autoSave();
+}
+
+/* ==========================================
+   DUPLICAR WIDGET
+========================================== */
+function duplicarWidget(id) {
+  const config = { ...widgets[id] };
+  config.x += 30;
+  config.y += 30;
+  criarWidget(config);
+  mostrarIndicador('📋 Widget Duplicado');
+}
+
+/* ==========================================
+   DELETAR WIDGET
+========================================== */
+function deletarWidget(id) {
+  if (!confirm(`Deletar Widget #${id}?`)) return;
+  
+  const box = document.getElementById(`box${id}`);
+  if (box) box.remove();
+  delete widgets[id];
+  
+  if (selectedWidget === id) selectedWidget = null;
+  atualizarListaWidgets();
+  mostrarIndicador('🗑️ Widget Deletado');
+  autoSave();
+}
+
+/* ==========================================
+   TOGGLE MODO INTERATIVO
+========================================== */
+function toggleInteractive(id) {
+  // Não permitir modo interativo se widget estiver travado
+  if (widgets[id].locked) {
+    mostrarIndicador('⚠️ Destrave o widget primeiro para habilitar modo interativo');
+    return;
+  }
+  
+  const box = document.getElementById(`box${id}`);
+  const btn = document.getElementById(`interactiveBtn${id}`);
+  
+  // Toggle estado
+  widgets[id].interactive = !widgets[id].interactive;
+  
+  if (widgets[id].interactive) {
+    box.classList.add('interactive');
+    btn.textContent = '✋ Editar';
+    btn.className = 'btn-warning btn-small';
+    mostrarIndicador('🖱️ Modo Interativo - Clique no iframe habilitado');
+  } else {
+    box.classList.remove('interactive');
+    btn.textContent = '🖱️ Interagir';
+    btn.className = 'btn-success btn-small';
+    mostrarIndicador('✋ Modo Edição - Arraste e redimensione');
+  }
+  
+  autoSave();
+}
+
+/* ==========================================
+   ARRASTAR WIDGET
+========================================== */
+function adicionarArraste(box, id) {
+  const dragOverlay = box.querySelector('.drag-overlay');
+  let dragging = false;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  dragOverlay.addEventListener('mousedown', (e) => {
+    if (widgets[id].locked) return;
+    
+    const controls = document.getElementById(`controls${id}`);
+    if (controls && controls.contains(e.target)) return;
+
+    dragging = true;
+    const rect = box.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    dragOverlay.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging || widgets[id].locked) return;
+    
+    widgets[id].x = e.clientX - offsetX;
+    widgets[id].y = e.clientY - offsetY;
+    
+    box.style.left = widgets[id].x + 'px';
+    box.style.top = widgets[id].y + 'px';
+    
+    // Atualizar inputs
+    const xInput = document.getElementById(`x${id}`);
+    const yInput = document.getElementById(`y${id}`);
+    if (xInput) xInput.value = Math.round(widgets[id].x);
+    if (yInput) yInput.value = Math.round(widgets[id].y);
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (dragging) {
+      dragging = false;
+      dragOverlay.style.cursor = 'move';
+      autoSave();
+    }
+  });
+}
+
+/* ==========================================
+   REDIMENSIONAR WIDGET (Estilo Photoshop)
+========================================== */
+function adicionarResize(box, id) {
+  const handles = box.querySelectorAll('.resize-handle');
+  
+  handles.forEach(handle => {
+    let resizing = false;
+    let startX, startY, startWidth, startHeight, startLeft, startTop;
+    const direction = handle.dataset.direction;
+    
+    handle.addEventListener('mousedown', (e) => {
+      if (widgets[id].locked) return;
+      
+      resizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = widgets[id].width;
+      startHeight = widgets[id].height;
+      startLeft = widgets[id].x;
+      startTop = widgets[id].y;
+      
+      e.stopPropagation();
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!resizing) return;
+      
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      
+      let newWidth = startWidth;
+      let newHeight = startHeight;
+      let newLeft = startLeft;
+      let newTop = startTop;
+      
+      // Lógica de resize para cada direção
+      switch(direction) {
+        case 'se': // Sudeste (canto inferior direito)
+          newWidth = Math.max(50, startWidth + deltaX);
+          newHeight = Math.max(50, startHeight + deltaY);
+          break;
+          
+        case 'sw': // Sudoeste (canto inferior esquerdo)
+          newWidth = Math.max(50, startWidth - deltaX);
+          newHeight = Math.max(50, startHeight + deltaY);
+          newLeft = startLeft + (startWidth - newWidth);
+          break;
+          
+        case 'ne': // Nordeste (canto superior direito)
+          newWidth = Math.max(50, startWidth + deltaX);
+          newHeight = Math.max(50, startHeight - deltaY);
+          newTop = startTop + (startHeight - newHeight);
+          break;
+          
+        case 'nw': // Noroeste (canto superior esquerdo)
+          newWidth = Math.max(50, startWidth - deltaX);
+          newHeight = Math.max(50, startHeight - deltaY);
+          newLeft = startLeft + (startWidth - newWidth);
+          newTop = startTop + (startHeight - newHeight);
+          break;
+          
+        case 'e': // Leste (direita)
+          newWidth = Math.max(50, startWidth + deltaX);
+          break;
+          
+        case 'w': // Oeste (esquerda)
+          newWidth = Math.max(50, startWidth - deltaX);
+          newLeft = startLeft + (startWidth - newWidth);
+          break;
+          
+        case 's': // Sul (baixo)
+          newHeight = Math.max(50, startHeight + deltaY);
+          break;
+          
+        case 'n': // Norte (cima)
+          newHeight = Math.max(50, startHeight - deltaY);
+          newTop = startTop + (startHeight - newHeight);
+          break;
+      }
+      
+      // Aplicar mudanças
+      widgets[id].width = Math.round(newWidth);
+      widgets[id].height = Math.round(newHeight);
+      widgets[id].x = Math.round(newLeft);
+      widgets[id].y = Math.round(newTop);
+      
+      box.style.width = widgets[id].width + 'px';
+      box.style.height = widgets[id].height + 'px';
+      box.style.left = widgets[id].x + 'px';
+      box.style.top = widgets[id].y + 'px';
+      
+      // Atualizar inputs
+      const wInput = document.getElementById(`width${id}`);
+      const hInput = document.getElementById(`height${id}`);
+      const xInput = document.getElementById(`x${id}`);
+      const yInput = document.getElementById(`y${id}`);
+      
+      if (wInput) wInput.value = widgets[id].width;
+      if (hInput) hInput.value = widgets[id].height;
+      if (xInput) xInput.value = widgets[id].x;
+      if (yInput) yInput.value = widgets[id].y;
+    });
+    
+    document.addEventListener('mouseup', () => {
+      if (resizing) {
+        resizing = false;
+        autoSave();
+      }
+    });
+  });
+}
+
+/* ==========================================
+   ATUALIZAR LISTA DE WIDGETS
+========================================== */
+function atualizarListaWidgets() {
+  const list = document.getElementById('widgetList');
+  const ids = Object.keys(widgets);
+  
+  if (ids.length === 0) {
+    list.innerHTML = '<div style="color: #888; text-align: center; padding: 20px; font-size: 12px;">Nenhum widget adicionado</div>';
+    return;
+  }
+  
+  list.innerHTML = ids.map(id => `
+    <div class="widget-item ${selectedWidget == id ? 'active' : ''}" onclick="selecionarWidget(${id})">
+      <div>
+        <strong>Widget #${id}</strong> ${widgets[id].locked ? '🔒' : ''}
+        <div style="font-size: 10px; color: #888; margin-top: 2px;">
+          ${widgets[id].width}x${widgets[id].height}px | Opacidade: ${Math.round(widgets[id].opacity * 100)}%
+        </div>
+      </div>
+      <button class="btn-danger btn-small" onclick="event.stopPropagation(); deletarWidget(${id})">🗑️</button>
+    </div>
+  `).join('');
+}
+
+/* ==========================================
+   OCULTAR/MOSTRAR CONTROLES
+========================================== */
+function toggleControls() {
+  controlsVisible = !controlsVisible;
+  const mainPanel = document.getElementById('mainControls');
+  
+  if (controlsVisible) {
+    mainPanel.classList.remove('hidden');
+    if (selectedWidget) {
+      const controls = document.getElementById(`controls${selectedWidget}`);
+      if (controls) controls.classList.remove('hidden');
+    }
+    mostrarIndicador('👁️ Controles Visíveis');
+  } else {
+    mainPanel.classList.add('hidden');
+    Object.keys(widgets).forEach(id => {
+      const controls = document.getElementById(`controls${id}`);
+      if (controls) controls.classList.add('hidden');
+    });
+    mostrarIndicador('🙈 Controles Ocultos');
+  }
+}
+
+/* ==========================================
+   TEMPLATES TIKFINITY
+========================================== */
+function adicionarTemplate() {
+  const templateHTML = `
+    <div style="padding: 20px; background: linear-gradient(135deg, rgba(20,20,20,0.98), rgba(40,40,40,0.98)); border-radius: 12px; max-width: 500px;">
+      <h3 style="color: white; margin-top: 0;">🎨 Templates TikFinity</h3>
+      <div class="template-grid">
+        ${Object.entries(tikfinityTemplates).map(([name, url]) => `
+          <div class="template-card" onclick="criarWidgetTemplate('${url}', '${name}')">
+            <div class="template-icon">📊</div>
+            <div>${name}</div>
+          </div>
+        `).join('')}
+      </div>
+      <p style="color: #888; font-size: 11px; margin-top: 15px; margin-bottom: 0;">
+        ℹ️ Nota: Substitua as URLs pelos links reais dos seus widgets do TikFinity
+      </p>
+    </div>
+  `;
+  
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 999999; max-height: 80vh; overflow-y: auto;';
+  modal.innerHTML = templateHTML;
+  
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 999998;';
+  overlay.onclick = () => {
+    document.body.removeChild(modal);
+    document.body.removeChild(overlay);
+  };
+  
+  document.body.appendChild(overlay);
+  document.body.appendChild(modal);
+}
+
+function criarWidgetTemplate(url, name) {
+  criarWidget({
+    url: url,
+    width: 350,
+    height: 200,
+    x: 100 + (widgetID * 20),
+    y: 100 + (widgetID * 20),
+    opacity: 1,
+    zoom: 1,
+    rotation: 0,
+    zIndex: 1000,
+    borderWidth: 0,
+    borderColor: '#ffffff',
+    borderStyle: 'solid',
+    borderRadius: 8,
+    locked: false
+  });
+  
+  // Fechar modal
+  const modals = document.querySelectorAll('div[style*="z-index: 999999"]');
+  const overlays = document.querySelectorAll('div[style*="z-index: 999998"]');
+  modals.forEach(m => m.remove());
+  overlays.forEach(o => o.remove());
+  
+  mostrarIndicador(`✨ Template "${name}" adicionado`);
+}
+
+/* ==========================================
+   SALVAR PRESET
+========================================== */
+function salvarPreset() {
+  const nome = prompt("💾 Nome do preset:", `Preset ${new Date().toLocaleDateString()}`);
+  if (!nome) return;
+
+  const presets = JSON.parse(localStorage.getItem('tikfinityPresets') || '{}');
+  presets[nome] = widgets;
+  localStorage.setItem('tikfinityPresets', JSON.stringify(presets));
+  
+  mostrarIndicador(`💾 Preset "${nome}" salvo com sucesso!`);
+}
+
+/* ==========================================
+   CARREGAR PRESET
+========================================== */
+function carregarPreset() {
+  const presets = JSON.parse(localStorage.getItem('tikfinityPresets') || '{}');
+  const nomes = Object.keys(presets);
+  
+  if (nomes.length === 0) {
+    alert('❌ Nenhum preset salvo encontrado.');
+    return;
+  }
+
+  const listaHTML = `
+    <div style="padding: 20px; background: linear-gradient(135deg, rgba(20,20,20,0.98), rgba(40,40,40,0.98)); border-radius: 12px; max-width: 400px;">
+      <h3 style="color: white; margin-top: 0;">📂 Carregar Preset</h3>
+      <div class="preset-list">
+        ${nomes.map(nome => `
+          <div class="preset-item" onclick="aplicarPreset('${nome}')">
+            <span>${nome}</span>
+            <button class="btn-danger btn-small" onclick="event.stopPropagation(); deletarPreset('${nome}')">🗑️</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  const modal = document.createElement('div');
+  modal.id = 'presetModal';
+  modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 999999;';
+  modal.innerHTML = listaHTML;
+  
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 999998;';
+  overlay.onclick = () => {
+    document.body.removeChild(modal);
+    document.body.removeChild(overlay);
+  };
+  
+  document.body.appendChild(overlay);
+  document.body.appendChild(modal);
+}
+
+function aplicarPreset(nome) {
+  const presets = JSON.parse(localStorage.getItem('tikfinityPresets') || '{}');
+  const preset = presets[nome];
+  
+  if (!preset) return;
+  
+  // Limpar widgets atuais
+  Object.keys(widgets).forEach(id => {
+    const box = document.getElementById(`box${id}`);
+    if (box) box.remove();
+  });
+  
+  widgets = {};
+  widgetID = 0;
+  
+  // Carregar preset
+  Object.values(preset).forEach(config => {
+    criarWidget(config);
+  });
+  
+  // Fechar modal
+  const modal = document.getElementById('presetModal');
+  const overlay = document.querySelector('div[style*="z-index: 999998"]');
+  if (modal) modal.remove();
+  if (overlay) overlay.remove();
+  
+  mostrarIndicador(`📂 Preset "${nome}" carregado!`);
+}
+
+function deletarPreset(nome) {
+  if (!confirm(`Deletar preset "${nome}"?`)) return;
+  
+  const presets = JSON.parse(localStorage.getItem('tikfinityPresets') || '{}');
+  delete presets[nome];
+  localStorage.setItem('tikfinityPresets', JSON.stringify(presets));
+  
+  carregarPreset();
+  mostrarIndicador(`🗑️ Preset "${nome}" deletado`);
+}
+
+/* ==========================================
+   EXPORTAR/IMPORTAR JSON
+========================================== */
+function exportarJSON() {
+  const data = {
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    widgets: widgets
+  };
+  
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tikfinity-overlay-${Date.now()}.json`;
+  a.click();
+  
+  URL.revokeObjectURL(url);
+  mostrarIndicador('📤 Configuração exportada!');
+}
+
+function importarJSON() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        
+        // Limpar widgets atuais
+        Object.keys(widgets).forEach(id => {
+          const box = document.getElementById(`box${id}`);
+          if (box) box.remove();
+        });
+        
+        widgets = {};
+        widgetID = 0;
+        
+        // Importar widgets
+        Object.values(data.widgets).forEach(config => {
+          criarWidget(config);
+        });
+        
+        mostrarIndicador('📥 Configuração importada!');
+      } catch (error) {
+        alert('❌ Erro ao importar arquivo: ' + error.message);
+      }
+    };
+    
+    reader.readAsText(file);
+  };
+  
+  input.click();
+}
+
+/* ==========================================
+   GERAR LINK EXTERNO
+========================================== */
+function gerarLinkExterno() {
+  if (Object.keys(widgets).length === 0) {
+    alert('❌ Adicione pelo menos um widget antes de gerar o link externo.');
+    return;
+  }
+
+  const modalHTML = `
+    <div style="padding: 25px; background: linear-gradient(135deg, rgba(20,20,20,0.98), rgba(40,40,40,0.98)); border-radius: 12px; max-width: 600px;">
+      <h3 style="color: white; margin-top: 0;">🔗 Gerar Link Externo</h3>
+      
+      <div style="margin-bottom: 20px;">
+        <p style="color: #aaa; font-size: 13px; margin-bottom: 15px;">
+          Escolha como deseja compartilhar seus widgets:
+        </p>
+        
+        <div style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 8px; border-left: 3px solid #667eea; margin-bottom: 15px;">
+          <strong style="color: #667eea;">📌 Opção 1: Via Preset (Recomendado)</strong>
+          <p style="color: #aaa; font-size: 12px; margin: 8px 0 0 0;">
+            Salve um preset primeiro e use o nome dele na URL. Ideal para configurações que você atualiza frequentemente.
+          </p>
+          <button class="btn-primary" onclick="abrirGerarLinkPreset()" style="margin-top: 10px;">
+            💾 Usar Preset
+          </button>
+        </div>
+        
+        <div style="background: rgba(56, 189, 248, 0.1); padding: 15px; border-radius: 8px; border-left: 3px solid #38bdf8; margin-bottom: 15px;">
+          <strong style="color: #38bdf8;">🔐 Opção 2: Via Configuração Codificada</strong>
+          <p style="color: #aaa; font-size: 12px; margin: 8px 0 0 0;">
+            Gera um link com todas as configurações embutidas. Perfeito para compartilhar uma versão fixa.
+          </p>
+          <button class="btn-info" onclick="gerarLinkConfig()" style="margin-top: 10px;">
+            🔗 Gerar Link Agora
+          </button>
+        </div>
+        
+        <div style="background: rgba(34, 197, 94, 0.1); padding: 15px; border-radius: 8px; border-left: 3px solid #22c55e;">
+          <strong style="color: #22c55e;">⚡ Opção 3: Auto-save</strong>
+          <p style="color: #aaa; font-size: 12px; margin: 8px 0 0 0;">
+            Use o link simples. Ele carregará automaticamente a última configuração salva no seu navegador.
+          </p>
+          <div style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; font-family: monospace; font-size: 12px; color: white; word-break: break-all;">
+            ${window.location.origin}/view.html
+          </div>
+          <button class="btn-success btn-small" onclick="copiarTexto('${window.location.origin}/view.html')" style="margin-top: 8px;">
+            📋 Copiar Link
+          </button>
+        </div>
+      </div>
+      
+      <button class="btn-small btn-warning" onclick="fecharModal()" style="width: 100%;">
+        ✖️ Fechar
+      </button>
+    </div>
+  `;
+  
+  mostrarModal(modalHTML);
+}
+
+function abrirGerarLinkPreset() {
+  const presets = JSON.parse(localStorage.getItem('tikfinityPresets') || '{}');
+  const nomes = Object.keys(presets);
+  
+  if (nomes.length === 0) {
+    alert('❌ Nenhum preset encontrado. Salve um preset primeiro usando o botão "💾 Salvar Preset".');
+    return;
+  }
+  
+  const listaHTML = `
+    <div style="padding: 25px; background: linear-gradient(135deg, rgba(20,20,20,0.98), rgba(40,40,40,0.98)); border-radius: 12px; max-width: 500px;">
+      <h3 style="color: white; margin-top: 0;">📂 Escolha um Preset</h3>
+      <div class="preset-list">
+        ${nomes.map(nome => `
+          <div class="preset-item" onclick="gerarLinkPreset('${nome}')">
+            <span>${nome}</span>
+            <button class="btn-info btn-small" onclick="event.stopPropagation(); gerarLinkPreset('${nome}')">
+              🔗 Gerar Link
+            </button>
+          </div>
+        `).join('')}
+      </div>
+      <button class="btn-small btn-warning" onclick="fecharModal()" style="width: 100%; margin-top: 15px;">
+        ✖️ Voltar
+      </button>
+    </div>
+  `;
+  
+  fecharModal();
+  setTimeout(() => mostrarModal(listaHTML), 100);
+}
+
+function gerarLinkPreset(nome) {
+  const url = `${window.location.origin}/view.html?preset=${encodeURIComponent(nome)}`;
+  
+  const resultHTML = `
+    <div style="padding: 25px; background: linear-gradient(135deg, rgba(20,20,20,0.98), rgba(40,40,40,0.98)); border-radius: 12px; max-width: 600px;">
+      <h3 style="color: white; margin-top: 0;">✅ Link Gerado com Sucesso!</h3>
+      
+      <div style="background: rgba(102, 126, 234, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <p style="color: #aaa; font-size: 12px; margin: 0 0 8px 0;">
+          <strong style="color: white;">Preset:</strong> ${nome}
+        </p>
+        <div style="padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; font-family: monospace; font-size: 11px; color: white; word-break: break-all; line-height: 1.5;">
+          ${url}
+        </div>
+      </div>
+      
+      <div style="background: rgba(255, 193, 7, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 3px solid #ffc107;">
+        <p style="color: #aaa; font-size: 11px; margin: 0;">
+          💡 <strong>Dica:</strong> Este link carrega o preset "${nome}". Se você atualizar o preset no editor, o link refletirá as mudanças automaticamente.
+        </p>
+      </div>
+      
+      <div class="btn-group" style="gap: 8px;">
+        <button class="btn-success" onclick="copiarTexto('${url}')">📋 Copiar Link</button>
+        <button class="btn-info" onclick="abrirNovaAba('${url}')">🔗 Abrir Link</button>
+        <button class="btn-warning" onclick="fecharModal()">✖️ Fechar</button>
+      </div>
+    </div>
+  `;
+  
+  fecharModal();
+  setTimeout(() => mostrarModal(resultHTML), 100);
+}
+
+function gerarLinkConfig() {
+  const data = JSON.stringify({ widgets: widgets });
+  const base64 = btoa(unescape(encodeURIComponent(data)));
+  const url = `${window.location.origin}/view.html?config=${base64}`;
+  
+  const resultHTML = `
+    <div style="padding: 25px; background: linear-gradient(135deg, rgba(20,20,20,0.98), rgba(40,40,40,0.98)); border-radius: 12px; max-width: 600px;">
+      <h3 style="color: white; margin-top: 0;">✅ Link Gerado com Sucesso!</h3>
+      
+      <div style="background: rgba(56, 189, 248, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+        <p style="color: #aaa; font-size: 12px; margin: 0 0 8px 0;">
+          <strong style="color: white;">Link com configuração embutida:</strong>
+        </p>
+        <div style="padding: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; font-family: monospace; font-size: 11px; color: white; word-break: break-all; line-height: 1.5; max-height: 150px; overflow-y: auto;">
+          ${url}
+        </div>
+      </div>
+      
+      <div style="background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 15px; border-left: 3px solid #ef4444;">
+        <p style="color: #aaa; font-size: 11px; margin: 0;">
+          ⚠️ <strong>Atenção:</strong> Este link contém uma versão fixa da configuração atual. Mudanças futuras não serão refletidas automaticamente.
+        </p>
+      </div>
+      
+      <div class="btn-group" style="gap: 8px;">
+        <button class="btn-success" onclick="copiarTexto('${url}')">📋 Copiar Link</button>
+        <button class="btn-info" onclick="abrirNovaAba('${url}')">🔗 Abrir Link</button>
+        <button class="btn-warning" onclick="fecharModal()">✖️ Fechar</button>
+      </div>
+    </div>
+  `;
+  
+  mostrarModal(resultHTML);
+}
+
+function mostrarModal(html) {
+  const modal = document.createElement('div');
+  modal.id = 'linkModal';
+  modal.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 999999; max-height: 90vh; overflow-y: auto;';
+  modal.innerHTML = html;
+  
+  const overlay = document.createElement('div');
+  overlay.id = 'linkOverlay';
+  overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 999998;';
+  overlay.onclick = fecharModal;
+  
+  document.body.appendChild(overlay);
+  document.body.appendChild(modal);
+}
+
+function fecharModal() {
+  const modal = document.getElementById('linkModal');
+  const overlay = document.getElementById('linkOverlay');
+  if (modal) modal.remove();
+  if (overlay) overlay.remove();
+}
+
+function copiarTexto(texto) {
+  navigator.clipboard.writeText(texto).then(() => {
+    mostrarIndicador('📋 Link copiado para a área de transferência!');
+  }).catch(() => {
+    const textArea = document.createElement('textarea');
+    textArea.value = texto;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    mostrarIndicador('📋 Link copiado!');
+  });
+}
+
+function abrirNovaAba(url) {
+  window.open(url, '_blank');
+  mostrarIndicador('🔗 Link aberto em nova aba!');
+}
+
+/* ==========================================
+   LIMPAR TUDO
+========================================== */
+function limparTudo() {
+  if (!confirm('🗑️ Deletar todos os widgets?')) return;
+  
+  Object.keys(widgets).forEach(id => {
+    const box = document.getElementById(`box${id}`);
+    if (box) box.remove();
+  });
+  
+  widgets = {};
+  widgetID = 0;
+  selectedWidget = null;
+  atualizarListaWidgets();
+  
+  mostrarIndicador('🗑️ Todos os widgets deletados');
+  autoSave();
+}
+
+/* ==========================================
+   GUIAS DE RESOLUÇÃO
+========================================== */
+let guiasAtivas = {
+  '720p': true,
+  '1080p': true,
+  '4k': true
+};
+
+function toggleGuia(tipo) {
+  guiasAtivas[tipo] = !guiasAtivas[tipo];
+  const guia = document.getElementById(`guide-${tipo}`);
+  const btn = document.getElementById(`toggle${tipo}`);
+  
+  if (guiasAtivas[tipo]) {
+    guia.style.display = 'block';
+    btn.style.opacity = '1';
+    mostrarIndicador(`📐 Guia ${tipo.toUpperCase()} ativada`);
+  } else {
+    guia.style.display = 'none';
+    btn.style.opacity = '0.5';
+    mostrarIndicador(`📐 Guia ${tipo.toUpperCase()} desativada`);
+  }
+}
+
+/* ==========================================
+   RESOLUÇÃO DA ÁREA DE EDIÇÃO
+========================================== */
+function definirResolucaoCanvas(largura, altura) {
+  document.getElementById('canvasWidth').value = largura;
+  document.getElementById('canvasHeight').value = altura;
+  aplicarResolucaoCanvas(largura, altura);
+}
+
+function definirResolucaoCanvasCustom() {
+  const largura = parseInt(document.getElementById('canvasWidth').value);
+  const altura = parseInt(document.getElementById('canvasHeight').value);
+  aplicarResolucaoCanvas(largura, altura);
+}
+
+function aplicarResolucaoCanvas(largura, altura) {
+  document.body.style.width = largura + 'px';
+  document.body.style.height = altura + 'px';
+  document.documentElement.style.width = largura + 'px';
+  document.documentElement.style.height = altura + 'px';
+  
+  mostrarIndicador(`📺 Área de edição ajustada para ${largura}x${altura}px`);
+}
+
+/* ==========================================
+   ZOOM DE CANVAS
+========================================== */
+let canvasZoomLevel = 1;
+let canvasContainer = null;
+
+function aplicarZoomCanvas(zoom) {
+  canvasZoomLevel = parseFloat(zoom);
+  if (!canvasContainer) {
+    canvasContainer = document.createElement('div');
+    canvasContainer.id = 'canvasContainer';
+    canvasContainer.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: center center;
+      transition: transform 0.2s ease;
+      pointer-events: none;
+    `;
+    
+    Object.keys(widgets).forEach(id => {
+      const box = document.getElementById(`box${id}`);
+      if (box && box.parentElement === document.body) {
+        canvasContainer.appendChild(box);
+      }
+    });
+    
+    canvasContainer.style.pointerEvents = 'auto';
+    document.body.appendChild(canvasContainer);
+  }
+  
+  canvasContainer.style.transform = `scale(${canvasZoomLevel})`;
+  mostrarIndicador(`🔍 Zoom do Canvas: ${Math.round(canvasZoomLevel * 100)}%`);
+}
+
+function resetarZoomCanvas() {
+  canvasZoomLevel = 1;
+  document.getElementById('canvasZoom').value = 1;
+  document.getElementById('canvasZoomVal').textContent = '100%';
+  
+  if (canvasContainer) {
+    canvasContainer.style.transform = 'scale(1)';
+  }
+  
+  mostrarIndicador('🔍 Zoom resetado para 100%');
+}
+
+/* ==========================================
+   INDICADOR DE ATALHOS
+========================================== */
+function mostrarIndicador(texto) {
+  const indicator = document.getElementById('shortcutIndicator');
+  indicator.textContent = texto;
+  indicator.classList.add('show');
+  
+  setTimeout(() => {
+    indicator.classList.remove('show');
+  }, 2000);
+}
+
+/* ==========================================
+   ATALHOS DE TECLADO
+========================================== */
+document.addEventListener('keydown', (e) => {
+  // Ctrl + H - Toggle controles
+  if (e.ctrlKey && e.key === 'h') {
+    e.preventDefault();
+    toggleControls();
+  }
+  
+  // Ctrl + S - Salvar preset
+  if (e.ctrlKey && e.key === 's') {
+    e.preventDefault();
+    salvarPreset();
+  }
+  
+  // Ctrl + L - Travar/Destravar todos
+  if (e.ctrlKey && e.key === 'l') {
+    e.preventDefault();
+    allLocked = !allLocked;
+    Object.keys(widgets).forEach(id => {
+      widgets[id].locked = allLocked;
+      const box = document.getElementById(`box${id}`);
+      aplicarEstilos(box, widgets[id]);
+    });
+    mostrarIndicador(allLocked ? '🔒 Todos Travados' : '🔓 Todos Destravados');
+    autoSave();
+  }
+  
+  // Delete - Deletar widget selecionado
+  if (e.key === 'Delete' && selectedWidget) {
+    e.preventDefault();
+    deletarWidget(selectedWidget);
+  }
+});
+
+/* ==========================================
+   CARREGAR AUTO-SAVE AO INICIAR
+========================================== */
+window.addEventListener('load', () => {
+  const restored = restaurarAutoSave();
+  if (restored) {
+    mostrarIndicador('✅ Configuração restaurada automaticamente');
+  }
+});
+
+</script>
+
+</body>
+</html>
