@@ -20,10 +20,8 @@ Link: [Overlayed](https://overlayed.rf.gd/)
 ---
 
 ## 📸 Preview
-> *(Add your own screenshot or GIF here)*  
-Example:  
-```
-[ Your overlay editor preview goes here ]
+<img width="1902" height="882" alt="{BBC038FD-DED7-4AAB-9F18-49888A50D9E3}" src="https://github.com/user-attachments/assets/64c05b49-3f49-4748-bf25-d4c6b862a266" />
+
 ```
 
 ---
